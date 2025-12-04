@@ -39,22 +39,22 @@ var REGISTRERS = map[string]bool{
 	"$rt": true, "$gp": true, "$sp": true, "$fp": true, "$sc": true, "$ra": true, "$pc": true, "$ir": true,
 }
 
-type TokenType int
+type TokenType string
 
 const (
-	IDENTIFIER TokenType = iota
-	INSTRUCTION
-	REGISTER
-	LABEL_DEF
-	LABEL_REF
-	SECTION
-	TYPE
-	STRING
-	NUMBER
-	VIRGULA
-	NEW_LINE
-	OPEN_PAREN
-	CLOSE_PAREN
+	IDENTIFIER  = "IDENTIFIER"
+	INSTRUCTION = "INSTRUCTION"
+	REGISTER    = "REGISTER"
+	LABEL_DEF   = "LABEL_DEF"
+	LABEL_REF   = "LABEL_REF"
+	SECTION     = "SECTION"
+	TYPE        = "TYPE"
+	STRING      = "STRING"
+	NUMBER      = "NUMBER"
+	VIRGULA     = "VIRGULA"
+	NEW_LINE    = "NEW_LINE"
+	OPEN_PAREN  = "OPEN_PAREN"
+	CLOSE_PAREN = "CLOSE_PAREN"
 )
 
 type Token struct {
@@ -278,16 +278,23 @@ func (tokenizer *Tokenizer) handleNumber() error {
 func (tokenizer *Tokenizer) handleStrings() error {
 	tokenizer.advance() // Pula primeira aspas
 	start := tokenizer.position
-	start_line := tokenizer.line
 
 	current := tokenizer.getCurrentChar()
-	for current != '"' {
+	for {
+		if current == '\n' {
+			return fmt.Errorf("Quebra de linha ao declara string. Linha %d Coluna %d", tokenizer.line+1, tokenizer.column+1)
+		}
+
 		tokenizer.advance()
 		current = tokenizer.getCurrentChar()
+		if current == '"' {
+			break
+		}
 	}
 
 	str := tokenizer.Data[start:tokenizer.position]
 	tokenizer.addToken(STRING, str)
+	tokenizer.advance()
 	return nil
 }
 
@@ -342,7 +349,6 @@ func (tokenizer *Tokenizer) Tokenize() error {
 		} else if current == '.' {
 			err = tokenizer.handleSectionOrType()
 		} else if current == '-' || (current >= '0' && current <= '9') {
-			// fmt.Printf("%c \n", current)
 			err = tokenizer.handleNumber()
 		} else if current == '"' {
 			err = tokenizer.handleStrings()
@@ -360,5 +366,6 @@ func (tokenizer *Tokenizer) Tokenize() error {
 		}
 	}
 
+	println("OK")
 	return nil
 }

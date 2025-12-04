@@ -29,5 +29,14 @@ func Assembler() {
 	data := load_file(file_name)
 
 	tk := newTokenizer(data)
-	tk.Tokenize()
+	err := tk.Tokenize()
+	if err != nil {
+		return
+	}
+
+	for _, token := range tk.tokens {
+		if token.TokenType != NEW_LINE {
+			fmt.Printf("[%s, %s]\n", token.TokenType, token.Value)
+		}
+	}
 }
