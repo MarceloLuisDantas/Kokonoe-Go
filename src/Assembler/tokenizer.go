@@ -164,9 +164,8 @@ func (tokenizer *Tokenizer) handleIdentifier() error {
 	} else if KEY_WORDS[key_world] {
 		tokenizer.addToken(INSTRUCTION, key_world)
 	} else {
-		tokenizer.addToken(IDENTIFIER, key_world)
+		return fmt.Errorf("'%s' não é um comando valido. Linha %d Coluna %d", key_world, tokenizer.line+1, tokenizer.column+1)
 	}
-
 	return nil
 }
 
@@ -331,7 +330,6 @@ func (tokenizer *Tokenizer) Tokenize() error {
 	var err error = nil
 	for tokenizer.position != len(tokenizer.Data) {
 		current := tokenizer.getCurrentChar()
-		// fmt.Printf("%c\n", current)
 		if current == ' ' || current == '\t' {
 			tokenizer.handleSpace()
 		} else if current == '\n' {

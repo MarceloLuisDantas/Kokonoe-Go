@@ -51,10 +51,11 @@ _main:
         move $t0, $t5
         li $sc, 1
         syscall  
+        # kkkk um comentario bacana
 
         ble $t5, $t4, *singular3
             la $t2, *lyric_1
-            j *p3
+            j *p3 # um comentario não tão banca
         singular3:
             la $t2, *lyric_6
         p3:
@@ -64,7 +65,8 @@ _main:
         syscall
 
         j *loop_99
-    end_99:
+    end_99: # esse já é 
+    
 
     la $t2, *lyric_4
     jal *_print_lyric

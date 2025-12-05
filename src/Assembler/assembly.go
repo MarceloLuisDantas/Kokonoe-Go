@@ -34,9 +34,6 @@ func Assembler() {
 		return
 	}
 
-	for _, token := range tk.tokens {
-		if token.TokenType != NEW_LINE {
-			fmt.Printf("[%s, %s]\n", token.TokenType, token.Value)
-		}
-	}
+	pr := newParser(tk.tokens)
+	pr.Parse()
 }
