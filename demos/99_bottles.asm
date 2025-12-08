@@ -78,6 +78,7 @@ _main:
     li $sc, 0
     syscall
 
+
 .data
     lyric_1: .string " bottles of beer on the wall. \n\0" 
     lyric_2: .string " bottles of beer. \n\0"

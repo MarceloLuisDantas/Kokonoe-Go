@@ -42,19 +42,24 @@ var REGISTRERS = map[string]bool{
 type TokenType string
 
 const (
-	IDENTIFIER  = "IDENTIFIER"
-	INSTRUCTION = "INSTRUCTION"
-	REGISTER    = "REGISTER"
-	LABEL_DEF   = "LABEL_DEF"
-	LABEL_REF   = "LABEL_REF"
-	SECTION     = "SECTION"
-	TYPE        = "TYPE"
-	STRING      = "STRING"
-	NUMBER      = "NUMBER"
-	VIRGULA     = "VIRGULA"
-	NEW_LINE    = "NEW_LINE"
-	OPEN_PAREN  = "OPEN_PAREN"
-	CLOSE_PAREN = "CLOSE_PAREN"
+	IDENTIFIER   = "IDENTIFIER"
+	INSTRUCTION  = "INSTRUCTION"
+	REGISTER     = "REGISTER"
+	LABEL_DEF    = "LABEL_DEF"
+	LABEL_REF    = "LABEL_REF"
+	STR_LABEL    = "STR_LABEL"
+	INT8_LABEL   = "INT8_LABEL"
+	UINT8_LABEL  = "UINT8_LABEL"
+	INT16_LABEL  = "INT16_LABEL"
+	UINT16_LABEL = "UINT16_LABEL"
+	SECTION      = "SECTION"
+	TYPE         = "TYPE"
+	STRING       = "STRING"
+	NUMBER       = "NUMBER"
+	VIRGULA      = "VIRGULA"
+	NEW_LINE     = "NEW_LINE"
+	OPEN_PAREN   = "OPEN_PAREN"
+	CLOSE_PAREN  = "CLOSE_PAREN"
 )
 
 type Token struct {
@@ -84,7 +89,7 @@ func newTokenizer(data string) *Tokenizer {
 }
 
 func (tokenizer *Tokenizer) addToken(token_type TokenType, value string) {
-	token := newToken(token_type, value, tokenizer.column, tokenizer.line)
+	token := newToken(token_type, value, tokenizer.line, tokenizer.column)
 	tokenizer.tokens = append(tokenizer.tokens, *token)
 	tokenizer.len += 1
 }
@@ -107,6 +112,10 @@ func (tokenizer *Tokenizer) nextLine() {
 
 func (tokenizer *Tokenizer) getCurrentChar() byte {
 	return tokenizer.Data[tokenizer.position]
+}
+
+func (tokenizer *Tokenizer) setLastTokenType(tk TokenType) {
+	tokenizer.tokens[tokenizer.len-1].TokenType = tk
 }
 
 func (tokenizer *Tokenizer) handleSpace() {
@@ -135,7 +144,7 @@ func (tokenizer *Tokenizer) handleComment() {
 	for tokenizer.getCurrentChar() != '\n' {
 		tokenizer.advance()
 	}
-	tokenizer.nextLine()
+	// tokenizer.nextLine()
 }
 
 func isValidCharacterToIdentifier(s byte) bool {
@@ -232,8 +241,33 @@ func (tokenizer *Tokenizer) handleSectionOrType() error {
 	token := tokenizer.Data[start:tokenizer.position]
 	if SECTIONS[token] {
 		tokenizer.addToken(SECTION, token)
+
+		var current byte
+		for {
+			current = tokenizer.getCurrentChar()
+			if current == '\n' {
+				break
+			}
+
+			if current != ' ' {
+				return fmt.Errorf("Declaração de seção não recebe argumentos. Linha %d Coluna %d", tokenizer.line+1, tokenizer.column+1)
+			}
+			tokenizer.advance()
+		}
+
 	} else if TYPES[token] {
-		tokenizer.addToken(TYPE, token)
+		switch token {
+		case ".string":
+			tokenizer.setLastTokenType(STR_LABEL)
+		case ".int8":
+			tokenizer.setLastTokenType(INT8_LABEL)
+		case ".int16":
+			tokenizer.setLastTokenType(INT16_LABEL)
+		case ".uint8":
+			tokenizer.setLastTokenType(UINT8_LABEL)
+		case ".uint16":
+			tokenizer.setLastTokenType(UINT16_LABEL)
+		}
 	} else {
 		return fmt.Errorf("Nome \"%s\" não é valido para definição de seção ou tipo. Linha %d, Coluna %d", token, tokenizer.line+1, tokenizer.column+1)
 	}
