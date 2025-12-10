@@ -201,8 +201,8 @@ func (tokenizer *Tokenizer) handleRegister() error {
 }
 
 func (tokenizer *Tokenizer) handleLabelRef() error {
-	start := tokenizer.position
 	tokenizer.advance() // Pula o *
+	start := tokenizer.position
 
 	for tokenizer.getCurrentChar() != ' ' && tokenizer.getCurrentChar() != '\n' {
 		if !isValidCharacterToIdentifier(tokenizer.getCurrentChar()) {
@@ -218,6 +218,7 @@ func (tokenizer *Tokenizer) handleLabelRef() error {
 	}
 
 	tokenizer.addToken(LABEL_REF, label)
+	// println(label)
 	return nil
 }
 
@@ -312,6 +313,7 @@ func (tokenizer *Tokenizer) handleStrings() error {
 	tokenizer.advance() // Pula primeira aspas
 	start := tokenizer.position
 
+	var last_char byte
 	current := tokenizer.getCurrentChar()
 	for {
 		if current == '\n' {
@@ -320,9 +322,13 @@ func (tokenizer *Tokenizer) handleStrings() error {
 
 		tokenizer.advance()
 		current = tokenizer.getCurrentChar()
-		if current == '"' {
+		if current == '"' && last_char != '\\' {
 			break
 		}
+
+		// println(current, last_char)
+		last_char = current
+
 	}
 
 	str := tokenizer.Data[start:tokenizer.position]
@@ -398,6 +404,5 @@ func (tokenizer *Tokenizer) Tokenize() error {
 		}
 	}
 
-	println("OK")
 	return nil
 }

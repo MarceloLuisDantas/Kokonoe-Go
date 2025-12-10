@@ -2,6 +2,8 @@ package assembler
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -98,12 +100,13 @@ type Parser struct {
 	Instructions []Instruction
 	Position     int
 	Len          int
-	Labels       map[string]int
+	JumpLabels   map[string]int
+	RomLabels    map[string]int
 	Gp           int
 }
 
 func newParser(tokens []Token) *Parser {
-	p := Parser{tokens, []Instruction{}, 0, len(tokens), make(map[string]int), 0}
+	p := Parser{tokens, []Instruction{}, 0, 0, make(map[string]int), make(map[string]int), 0}
 	return &p
 }
 
@@ -198,7 +201,7 @@ func (parser *Parser) parseRegisterInstruciton() error {
 	ins = append(ins, arg2.Value)
 	ins = append(ins, arg3.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 7
 	return nil
 }
@@ -242,7 +245,7 @@ func (parser *Parser) parseImediateInstruciton() error {
 	ins = append(ins, arg2.Value)
 	ins = append(ins, arg3.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 7
 	return nil
 }
@@ -269,7 +272,7 @@ func (parser *Parser) parseJump() error {
 
 	ins = append(ins, arg.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 3
 	return nil
 }
@@ -312,7 +315,7 @@ func (parser *Parser) parseBranch() error {
 	ins = append(ins, arg2.Value)
 	ins = append(ins, arg3.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 7
 	return nil
 }
@@ -363,7 +366,7 @@ func (parser *Parser) parseMemorie() error {
 	ins = append(ins, offset.Value)
 	ins = append(ins, arg2.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 8
 	return nil
 }
@@ -384,7 +387,7 @@ func (parser *Parser) parseIncDec() error {
 
 	ins = append(ins, arg.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 3
 	return nil
 }
@@ -399,7 +402,7 @@ func (parser *Parser) parseSyscallReturn() error {
 	}
 
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 2
 	return nil
 }
@@ -430,7 +433,7 @@ func (parser *Parser) parseMove() error {
 	ins = append(ins, arg1.Value)
 	ins = append(ins, arg2.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 5
 	return nil
 }
@@ -461,7 +464,7 @@ func (parser *Parser) parseLi() error {
 	ins = append(ins, arg1.Value)
 	ins = append(ins, arg2.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 5
 	return nil
 }
@@ -492,7 +495,7 @@ func (parser *Parser) parseLa() error {
 	ins = append(ins, arg1.Value)
 	ins = append(ins, arg2.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 5
 	return nil
 }
@@ -512,14 +515,116 @@ func (parser *Parser) parseRand() error {
 
 	ins = append(ins, arg1.Value)
 	parser.Instructions = append(parser.Instructions, ins)
-	parser.Len += 1
+	parser.Len += 2
 	parser.Position += 3
 	return nil
 }
 
-func (parser *Parser) parseLabelDef() error {
-	parser.Labels[parser.getCurrentToken().Value] = parser.Len - 1
+func (parser *Parser) parseJumpLabelDef() error {
+	parser.JumpLabels[parser.getCurrentToken().Value] = parser.Len
 	parser.Position += 1
+	return nil
+}
+
+func (parser *Parser) parseStrings() error {
+	current := parser.getCurrentToken()
+	label := current.Value
+	parser.RomLabels[label] = parser.Len
+	parser.Position += 1
+	current = parser.getCurrentToken()
+
+	// fmt.Println(current)
+	ins := Instruction{"STR"}
+	str := ""
+	for current.TokenType != NEW_LINE {
+		escape := false
+		for _, char := range current.Value {
+			// print(string(char))
+			if char == '\\' {
+				if escape == false {
+					escape = true
+				} else {
+					str += "\\"
+				}
+			} else {
+				if escape == false {
+					str += string(char)
+				} else {
+					switch char {
+					case 'n':
+						str += "\n"
+					case '"':
+						str += "\""
+					case '\\':
+						str += "\\"
+					case '0':
+						str += "\x00"
+					default:
+						return fmt.Errorf("Character \"%s\" de escape não reconhecido. Linha %d Coluna %d",
+							string(char), current.Line+1, current.Column)
+					}
+					escape = false
+				}
+			}
+		}
+
+		// fmt.Printf("-%s-", str)
+		parser.Position += 1
+		current = parser.getCurrentToken()
+	}
+	ins = append(ins, str)
+	parser.Instructions = append(parser.Instructions, ins)
+	return nil
+}
+
+func ConvertWithOverflowAny(value string, t string) (string, error) {
+	num, err := strconv.ParseInt(value, 0, 64)
+	if err != nil {
+		return "", fmt.Errorf("Erro ao ler inteiro")
+	}
+
+	switch t {
+	case "int8":
+		return strconv.Itoa(int(int8(num))), nil
+	case "uint8":
+		return strconv.Itoa(int(uint8(num))), nil
+	case "int16":
+		return strconv.Itoa(int(int16(num))), nil
+	case "uint16":
+		return strconv.Itoa(int(uint16(num))), nil
+	default:
+		return "", fmt.Errorf("tipo \"%s\" não é um tipo de inteiro valido", t)
+	}
+}
+
+func (parser *Parser) parseInt(t string) error {
+	current := parser.getCurrentToken()
+	parser.RomLabels[current.Value] = parser.Len
+	parser.Position += 1
+
+	total := 0
+	current = parser.getCurrentToken()
+	ins := Instruction{strings.ToUpper(t)}
+	for current.TokenType != NEW_LINE {
+		num, err := ConvertWithOverflowAny(current.Value, t)
+		if err != nil {
+			return err
+		}
+
+		ins = append(ins, num)
+		parser.Position += 1
+		current = parser.getCurrentToken()
+		total += 1
+	}
+
+	switch t {
+	case "int8", "uint8":
+		parser.Len += total
+	case "int16", "uint16":
+		parser.Len += total * 2
+	}
+
+	parser.Instructions = append(parser.Instructions, ins)
 	return nil
 }
 
@@ -577,15 +682,29 @@ func (parser *Parser) Parse() []Instruction {
 		} else if currentToken.Value == "rand" {
 			err = parser.parseRand()
 		} else if currentToken.TokenType == LABEL_DEF {
-			err = parser.parseLabelDef()
+			err = parser.parseJumpLabelDef()
 		} else if currentToken.TokenType == NEW_LINE {
 			parser.Position += 1
 		} else if currentToken.TokenType == SECTION {
-			parser.Instructions = append(parser.Instructions, Instruction{".data"})
+			parser.Gp = parser.Len
 			parser.Position += 1
+		} else if currentToken.TokenType == STR_LABEL {
+			err = parser.parseStrings()
+		} else if currentToken.TokenType == INT8_LABEL {
+			err = parser.parseInt("int8")
+		} else if currentToken.TokenType == UINT8_LABEL {
+			err = parser.parseInt("uint8")
+		} else if currentToken.TokenType == INT16_LABEL {
+			err = parser.parseInt("int16")
+		} else if currentToken.TokenType == UINT16_LABEL {
+			err = parser.parseInt("uint16")
+		} else {
+			err = fmt.Errorf("Instrução ou Seção invalida em linha %d coluna %d.",
+				currentToken.Line, currentToken.Column)
 		}
 
 		if err != nil {
+			fmt.Println(err)
 			return nil
 		}
 	}

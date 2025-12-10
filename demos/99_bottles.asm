@@ -80,10 +80,18 @@ _main:
 
 
 .data
-    lyric_1: .string " bottles of beer on the wall. \n\0" 
+    lyric_1: .string " bottles of beer on \"the wall\". \n\0" 
     lyric_2: .string " bottles of beer. \n\0"
     lyric_3: .string "Take one down & pass it around, now there's. \n\0"
     lyric_4: .string "No more bottles of beer on the wall, no more bottles of beer. \n\0"
     lyric_5: .string "Go to the store and buy some more, 99 bottles of beer on the wall... \n\0"
     lyric_6: .string " bottle of beer on the wall. \n\0" 
     lyric_7: .string " bottle of beer. \n\0"
+    num_1: .int8 -124 
+    # list_num_1: .int8 2 3 4
+    num_2: .uint8 255
+    # list_num_2: .uint8 6 7 8
+    num_2: .int16 -30125 
+    # list_num_3: .int16 10 11 12
+    num_4: .uint16 61023 
+    # list_num_4: .uint16 14 15 16
